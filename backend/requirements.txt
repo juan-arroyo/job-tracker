@@ -1,0 +1,18 @@
+# Core framework
+Django==5.1.4
+
+# PostgreSQL driver — psycopg2-binary includes compiled C extensions,
+# avoiding the need to compile from source inside the container
+psycopg2-binary==2.9.10
+
+# WSGI server — Gunicorn is used instead of Django's built-in server
+# because Django's dev server is single-threaded and not safe for production
+gunicorn==23.0.0
+
+# Reads environment variables from a .env file —
+# keeps secrets out of the codebase and makes config portable across environments
+python-decouple==3.8
+
+# HTMX integration for Django — provides template tags and utilities
+# to use HTMX without writing JavaScript
+django-htmx==1.21.0

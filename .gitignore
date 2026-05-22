@@ -1,0 +1,21 @@
+# Environment variables — contain secrets, never commit
+.env
+*.env
+
+# Kubernetes secrets — contain production credentials in Base64
+manifests/secret.yaml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Django
+staticfiles/
+media/
+
+# Docker
+.dockerignore
+
+# VS Code
+.vscode/

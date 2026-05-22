@@ -1,0 +1,52 @@
+# Docker Compose for local development only.
+# Production runs on K3s with separate manifests in /manifests.
+
+services:
+
+  db:
+    # Official PostgreSQL image — same major version as production
+    # to avoid behavior differences between local and K3s
+    image: postgres:16-alpine
+    environment:
+      # These credentials are for local development only.
+      # Production credentials live in a Kubernetes Secret, never here.
+      POSTGRES_DB: jobtracker
+      POSTGRES_USER: jobtracker
+      POSTGRES_PASSWORD: jobtracker
+    volumes:
+      # Named volume so the database survives container restarts.
+      # Without this, all data is lost every time the container stops.
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      # Expose PostgreSQL locally for debugging with tools like DBeaver.
+      # Not needed by Django — containers communicate internally by service name.
+      - "5432:5432"
+
+  web:
+    build:
+      # Build context is the backend folder — Dockerfile lives there
+      context: ./backend
+    command: >
+      sh -c "
+        while ! nc -z db 5432; do sleep 1; done &&
+        python manage.py migrate &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+    volumes:
+      # Mount local code into the container so changes reflect
+      # immediately without rebuilding the image
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      # Tell Django which settings file to use for local development
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+    depends_on:
+      # Ensures the db container starts before web.
+      # Does NOT guarantee PostgreSQL is ready to accept connections —
+      # that's handled by Django's connection retry logic.
+      - db
+
+volumes:
+  # Named volume managed by Docker — persists data across container restarts
+  postgres_data:
