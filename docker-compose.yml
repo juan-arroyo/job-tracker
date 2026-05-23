@@ -20,7 +20,7 @@ services:
     ports:
       # Expose PostgreSQL locally for debugging with tools like DBeaver.
       # Not needed by Django — containers communicate internally by service name.
-      - "5432:5432"
+      - "5433:5432"
 
   web:
     build:
