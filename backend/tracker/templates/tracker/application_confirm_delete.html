@@ -1,0 +1,27 @@
+{% extends "tracker/base.html" %}
+
+{% block title %}Delete Application — Job Tracker{% endblock %}
+
+{% block content %}
+
+<div class="max-w-md mx-auto">
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            <h2 class="card-title text-error">Delete Application</h2>
+            <p class="py-4">
+                Are you sure you want to delete <strong>{{ application.position }}</strong>
+                at <strong>{{ application.company.name }}</strong>?
+            </p>
+            <div class="card-actions justify-end">
+                <a href="{% url 'tracker:application_detail' application.pk %}"
+                   class="btn btn-ghost">Cancel</a>
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-error">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

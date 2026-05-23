@@ -1,0 +1,43 @@
+{% extends "tracker/base.html" %}
+
+{% block title %}Companies — Job Tracker{% endblock %}
+
+{% block content %}
+
+<div class="flex justify-between items-center mb-8">
+    <h1 class="text-3xl font-bold">Companies</h1>
+    <a href="{% url 'tracker:company_create' %}" class="btn btn-primary">+ Add Company</a>
+</div>
+
+{% if companies %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for company in companies %}
+    <div class="card bg-base-100 shadow hover:shadow-lg transition-shadow">
+        <div class="card-body">
+            <h2 class="card-title">{{ company.name }}</h2>
+            <p class="text-base-content/60">{{ company.country }}</p>
+            {% if company.website %}
+            <a href="{{ company.website }}" target="_blank" class="link link-primary text-sm">
+                {{ company.website }}
+            </a>
+            {% endif %}
+            <div class="card-actions justify-end mt-4">
+                <a href="{% url 'tracker:company_detail' company.pk %}" 
+                   class="btn btn-sm btn-outline">View</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card bg-base-100 shadow">
+    <div class="card-body text-center py-12">
+        <p class="text-base-content/60 mb-4">No companies yet.</p>
+        <a href="{% url 'tracker:company_create' %}" class="btn btn-primary btn-sm">
+            Add your first company
+        </a>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

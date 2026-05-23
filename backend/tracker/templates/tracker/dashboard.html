@@ -1,0 +1,79 @@
+{% extends "tracker/base.html" %}
+
+{% block title %}Dashboard — Job Tracker{% endblock %}
+
+{% block content %}
+
+<h1 class="text-3xl font-bold mb-8">Dashboard</h1>
+
+<!-- Summary stats — three cards showing key numbers at a glance -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            <h2 class="card-title text-sm text-base-content/60">Companies</h2>
+            <p class="text-4xl font-bold">{{ total_companies }}</p>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            <h2 class="card-title text-sm text-base-content/60">Total Applications</h2>
+            <p class="text-4xl font-bold">{{ total_applications }}</p>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            <h2 class="card-title text-sm text-base-content/60">Active Applications</h2>
+            <p class="text-4xl font-bold text-success">{{ active_applications }}</p>
+        </div>
+    </div>
+
+</div>
+
+<!-- Recent activity feed -->
+<div class="card bg-base-100 shadow">
+    <div class="card-body">
+        <h2 class="card-title mb-4">Recent Applications</h2>
+
+        {% if recent_applications %}
+        <div class="overflow-x-auto">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Position</th>
+                        <th>Company</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in recent_applications %}
+                    <tr class="hover">
+                        <td>
+                            <a href="{% url 'tracker:application_detail' app.pk %}" 
+                               class="link link-hover font-medium">
+                                {{ app.position }}
+                            </a>
+                        </td>
+                        <td>{{ app.company.name }}</td>
+                        <td>{{ app.date_applied }}</td>
+                        <td>
+                            <span class="badge badge-outline">{{ app.get_status_display }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-base-content/60">No applications yet. 
+            <a href="{% url 'tracker:application_create' %}" class="link">Add your first one.</a>
+        </p>
+        {% endif %}
+
+    </div>
+</div>
+
+{% endblock %}

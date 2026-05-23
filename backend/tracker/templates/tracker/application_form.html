@@ -1,0 +1,41 @@
+{% extends "tracker/base.html" %}
+
+{% block title %}{{ action }} Application — Job Tracker{% endblock %}
+
+{% block content %}
+
+<div class="max-w-xl mx-auto">
+    <h1 class="text-3xl font-bold mb-8">{{ action }} Application</h1>
+
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {% for field in form %}
+                <div class="form-control mb-4">
+                    <label class="label">
+                        <span class="label-text font-medium">{{ field.label }}</span>
+                    </label>
+                    <div class="[&_input]:input [&_input]:input-bordered [&_input]:w-full
+                                [&_textarea]:textarea [&_textarea]:textarea-bordered [&_textarea]:w-full
+                                [&_select]:select [&_select]:select-bordered [&_select]:w-full">
+                        {{ field }}
+                    </div>
+                    {% if field.errors %}
+                    <label class="label">
+                        <span class="label-text-alt text-error">{{ field.errors|join:", " }}</span>
+                    </label>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                <div class="card-actions justify-end mt-6">
+                    <a href="{% url 'tracker:application_list' %}" class="btn btn-ghost">Cancel</a>
+                    <button type="submit" class="btn btn-primary">{{ action }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

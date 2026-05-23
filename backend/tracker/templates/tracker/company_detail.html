@@ -1,0 +1,75 @@
+{% extends "tracker/base.html" %}
+
+{% block title %}{{ company.name }} — Job Tracker{% endblock %}
+
+{% block content %}
+
+<div class="flex justify-between items-center mb-8">
+    <div>
+        <h1 class="text-3xl font-bold">{{ company.name }}</h1>
+        <p class="text-base-content/60 mt-1">{{ company.country }}</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'tracker:company_edit' company.pk %}" class="btn btn-outline btn-sm">Edit</a>
+        <a href="{% url 'tracker:company_delete' company.pk %}" class="btn btn-error btn-outline btn-sm">Delete</a>
+    </div>
+</div>
+
+{% if company.website %}
+<p class="mb-6">
+    <a href="{{ company.website }}" target="_blank" class="link link-primary">{{ company.website }}</a>
+</p>
+{% endif %}
+
+{% if company.notes %}
+<div class="card bg-base-100 shadow mb-8">
+    <div class="card-body">
+        <h2 class="card-title text-sm">Notes</h2>
+        <p>{{ company.notes }}</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Applications at this company -->
+<div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-bold">Applications</h2>
+    <a href="{% url 'tracker:application_create' %}" class="btn btn-primary btn-sm">+ Add Application</a>
+</div>
+
+{% if applications %}
+<div class="card bg-base-100 shadow">
+    <div class="card-body p-0">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Position</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for app in applications %}
+                <tr class="hover">
+                    <td class="font-medium">{{ app.position }}</td>
+                    <td>{{ app.date_applied }}</td>
+                    <td><span class="badge badge-outline">{{ app.get_status_display }}</span></td>
+                    <td>
+                        <a href="{% url 'tracker:application_detail' app.pk %}" 
+                           class="btn btn-ghost btn-xs">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card bg-base-100 shadow">
+    <div class="card-body text-center py-8">
+        <p class="text-base-content/60">No applications for this company yet.</p>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

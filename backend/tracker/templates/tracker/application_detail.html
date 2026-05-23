@@ -1,0 +1,76 @@
+{% extends "tracker/base.html" %}
+
+{% block title %}{{ application.position }} — Job Tracker{% endblock %}
+
+{% block content %}
+
+<div class="flex justify-between items-center mb-8">
+    <div>
+        <h1 class="text-3xl font-bold">{{ application.position }}</h1>
+        <p class="text-base-content/60 mt-1">
+            <a href="{% url 'tracker:company_detail' application.company.pk %}"
+               class="link link-hover">{{ application.company.name }}</a>
+            · {{ application.date_applied }}
+        </p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'tracker:application_edit' application.pk %}"
+           class="btn btn-outline btn-sm">Edit</a>
+        <a href="{% url 'tracker:application_delete' application.pk %}"
+           class="btn btn-error btn-outline btn-sm">Delete</a>
+    </div>
+</div>
+
+<!-- Status badge -->
+<div class="mb-8">
+    <span class="badge badge-outline badge-lg">{{ application.get_status_display }}</span>
+    {% if application.job_url %}
+    <a href="{{ application.job_url }}" target="_blank" class="btn btn-ghost btn-sm ml-2">
+        View Job Posting ↗
+    </a>
+    {% endif %}
+</div>
+
+{% if application.notes %}
+<div class="card bg-base-100 shadow mb-8">
+    <div class="card-body">
+        <h2 class="card-title text-sm">Notes</h2>
+        <p>{{ application.notes }}</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Interview rounds -->
+<div class="card bg-base-100 shadow">
+    <div class="card-body">
+        <h2 class="card-title mb-4">Interview Rounds</h2>
+        {% if interview_rounds %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Result</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for round in interview_rounds %}
+                <tr class="hover">
+                    <td>{{ round.date }}</td>
+                    <td>{{ round.get_type_display }}</td>
+                    <td>
+                        <span class="badge badge-outline">{{ round.get_result_display }}</span>
+                    </td>
+                    <td class="text-base-content/60">{{ round.notes|truncatechars:60 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-base-content/60">No interview rounds recorded yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
