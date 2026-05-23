@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Company, JobApplication
+from .models import Company, JobApplication, Contact, InterviewRound
 
 
 class CompanyForm(forms.ModelForm):
@@ -28,5 +28,30 @@ class JobApplicationForm(forms.ModelForm):
         widgets = {
             # Use date input for proper date picker in the browser
             "date_applied": forms.DateInput(attrs={"type": "date"}),
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
+class ContactForm(forms.ModelForm):
+    """
+    Form for creating and editing a Contact person at a company.
+    """
+    class Meta:
+        model = Contact
+        fields = ["company", "name", "linkedin_url", "email", "notes"]
+        widgets = {
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+
+class InterviewRoundForm(forms.ModelForm):
+    """
+    Form for logging an interview round linked to a specific application.
+    """
+    class Meta:
+        model = InterviewRound
+        fields = ["date", "type", "result", "notes"]
+        widgets = {
+            "date": forms.DateInput(attrs={"type": "date"}),
             "notes": forms.Textarea(attrs={"rows": 3}),
         }

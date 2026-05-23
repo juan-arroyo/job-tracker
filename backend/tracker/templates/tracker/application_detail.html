@@ -43,7 +43,11 @@
 <!-- Interview rounds -->
 <div class="card bg-base-100 shadow">
     <div class="card-body">
-        <h2 class="card-title mb-4">Interview Rounds</h2>
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="card-title">Interview Rounds</h2>
+            <a href="{% url 'tracker:round_create' application.pk %}"
+            class="btn btn-primary btn-sm">+ Add Round</a>
+        </div>
         {% if interview_rounds %}
         <table class="table">
             <thead>

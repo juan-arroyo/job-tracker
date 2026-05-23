@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 
-from .forms import CompanyForm, JobApplicationForm
-from .models import Company, JobApplication
+from .models import Company, JobApplication, Contact, InterviewRound
+from .forms import CompanyForm, JobApplicationForm, ContactForm, InterviewRoundForm
 
 
 def dashboard(request):
@@ -121,3 +121,68 @@ def application_delete(request, pk):
         application.delete()
         return redirect("tracker:application_list")
     return render(request, "tracker/application_confirm_delete.html", {"application": application})
+
+
+def contact_list(request):
+    # List all contacts across all companies
+    contacts = Contact.objects.select_related("company").all()
+    return render(request, "tracker/contact_list.html", {"contacts": contacts})
+
+
+def contact_create(request):
+    if request.method == "POST":
+        form = ContactForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect("tracker:contact_list")
+    else:
+        form = ContactForm()
+    return render(request, "tracker/contact_form.html", {"form": form, "action": "Create"})
+
+
+def contact_edit(request, pk):
+    contact = get_object_or_404(Contact, pk=pk)
+    if request.method == "POST":
+        form = ContactForm(request.POST, instance=contact)
+        if form.is_valid():
+            form.save()
+            return redirect("tracker:contact_list")
+    else:
+        form = ContactForm(instance=contact)
+    return render(request, "tracker/contact_form.html", {"form": form, "action": "Edit"})
+
+
+def contact_delete(request, pk):
+    contact = get_object_or_404(Contact, pk=pk)
+    if request.method == "POST":
+        contact.delete()
+        return redirect("tracker:contact_list")
+    return render(request, "tracker/contact_confirm_delete.html", {"contact": contact})
+
+
+def round_create(request, app_pk):
+    # InterviewRound is always created in the context of a specific application
+    application = get_object_or_404(JobApplication, pk=app_pk)
+    if request.method == "POST":
+        form = InterviewRoundForm(request.POST)
+        if form.is_valid():
+            round = form.save(commit=False)
+            # Link the round to the application before saving
+            round.application = application
+            round.save()
+            return redirect("tracker:application_detail", pk=application.pk)
+    else:
+        form = InterviewRoundForm()
+    return render(request, "tracker/round_form.html", {
+        "form": form,
+        "application": application,
+    })
+
+
+def round_delete(request, pk):
+    round = get_object_or_404(InterviewRound, pk=pk)
+    application_pk = round.application.pk
+    if request.method == "POST":
+        round.delete()
+        return redirect("tracker:application_detail", pk=application_pk)
+    return render(request, "tracker/round_confirm_delete.html", {"round": round})

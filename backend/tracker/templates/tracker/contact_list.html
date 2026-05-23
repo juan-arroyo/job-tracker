@@ -1,0 +1,72 @@
+{% extends "tracker/base.html" %}
+
+{% block title %}Contacts — Job Tracker{% endblock %}
+
+{% block content %}
+
+<div class="flex justify-between items-center mb-8">
+    <h1 class="text-3xl font-bold">Contacts</h1>
+    <a href="{% url 'tracker:contact_create' %}" class="btn btn-primary">+ Add Contact</a>
+</div>
+
+{% if contacts %}
+<div class="card bg-base-100 shadow">
+    <div class="card-body p-0">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Company</th>
+                    <th>Email</th>
+                    <th>LinkedIn</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for contact in contacts %}
+                <tr class="hover">
+                    <td class="font-medium">{{ contact.name }}</td>
+                    <td>
+                        <a href="{% url 'tracker:company_detail' contact.company.pk %}"
+                           class="link link-hover">{{ contact.company.name }}</a>
+                    </td>
+                    <td>
+                        {% if contact.email %}
+                        <a href="mailto:{{ contact.email }}" class="link link-hover">
+                            {{ contact.email }}
+                        </a>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if contact.linkedin_url %}
+                        <a href="{{ contact.linkedin_url }}" target="_blank" class="link link-primary">
+                            LinkedIn ↗
+                        </a>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td class="flex gap-2">
+                        <a href="{% url 'tracker:contact_edit' contact.pk %}"
+                           class="btn btn-ghost btn-xs">Edit</a>
+                        <a href="{% url 'tracker:contact_delete' contact.pk %}"
+                           class="btn btn-ghost btn-xs text-error">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card bg-base-100 shadow">
+    <div class="card-body text-center py-12">
+        <p class="text-base-content/60 mb-4">No contacts yet.</p>
+        <div>
+            <a href="{% url 'tracker:contact_create' %}" class="btn btn-primary btn-sm">
+                Add your first contact
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
