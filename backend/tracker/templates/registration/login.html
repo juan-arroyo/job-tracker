@@ -1,0 +1,41 @@
+{% extends "tracker/base.html" %}
+{% block title %}Login — Job Tracker{% endblock %}
+{% block content %}
+
+<div class="flex justify-center mt-20">
+    <div class="card bg-base-100 shadow w-full max-w-sm">
+        <div class="card-body">
+            <h1 class="card-title text-2xl mb-4">Sign in</h1>
+
+            <!-- Django auth form — renders username and password fields -->
+            <form method="post">
+                {% csrf_token %}
+
+                {% if form.errors %}
+                <!-- Show error if credentials are wrong -->
+                <div class="alert alert-error mb-4">
+                    <span>Invalid username or password.</span>
+                </div>
+                {% endif %}
+
+                <div class="form-control mb-4">
+                    <label class="label">
+                        <span class="label-text">Username</span>
+                    </label>
+                    {{ form.username }}
+                </div>
+
+                <div class="form-control mb-6">
+                    <label class="label">
+                        <span class="label-text">Password</span>
+                    </label>
+                    {{ form.password }}
+                </div>
+
+                <button type="submit" class="btn btn-primary w-full">Sign in</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

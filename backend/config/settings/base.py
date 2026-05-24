@@ -81,3 +81,13 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Redirect to dashboard after successful login
+LOGIN_REDIRECT_URL = "/"
+
+# Redirect to login page when @login_required rejects unauthenticated users
+LOGIN_URL = "/accounts/login/"
+
+# Redirect to login page after logout instead of Django admin
+LOGOUT_REDIRECT_URL = "/accounts/login/"
+

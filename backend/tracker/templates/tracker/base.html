@@ -21,10 +21,20 @@
                 🎯 Job Tracker
             </a>
         </div>
-        <div class="flex gap-4">
+        <div class="flex items-center gap-2">
+            {% if user.is_authenticated %}
             <a href="{% url 'tracker:company_list' %}" class="btn btn-ghost btn-sm">Companies</a>
             <a href="{% url 'tracker:application_list' %}" class="btn btn-ghost btn-sm">Applications</a>
             <a href="{% url 'tracker:contact_list' %}" class="btn btn-ghost btn-sm">Contacts</a>
+            <!-- Divider — visually separates nav links from user actions -->
+            <div class="w-px h-5 bg-base-content/20 mx-2"></div>
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ghost btn-sm text-base-content/50">
+                    {{ user.username }} · Logout
+                </button>
+            </form>
+            {% endif %}
         </div>
     </nav>
 
