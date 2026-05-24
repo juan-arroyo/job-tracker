@@ -16,3 +16,4 @@ python-decouple==3.8
 # HTMX integration for Django — provides template tags and utilities
 # to use HTMX without writing JavaScript
 django-htmx==1.21.0
+
