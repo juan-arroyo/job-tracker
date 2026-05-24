@@ -6,7 +6,10 @@ DEBUG = False
 
 # Only accept requests coming through our domain.
 # Requests to any other host will be rejected with 400 Bad Request.
-ALLOWED_HOSTS = ['demo.jmarroyo.es']
+# Domain for production traffic + worker IPs for direct debugging access
+ALLOWED_HOSTS = ['demo.jmarroyo.es', '46.62.219.138', '77.42.124.22', '77.42.124.11']
+
+CSRF_TRUSTED_ORIGINS = ['https://demo.jmarroyo.es']
 
 # PostgreSQL credentials come from a Kubernetes Secret —
 # never hardcoded here or in any file that goes to GitHub.
@@ -27,8 +30,8 @@ DATABASES = {
 # collectstatic copies all files to STATIC_ROOT for Nginx to serve.
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Security headers — only meaningful in production with HTTPS
-# Tells browsers to always use HTTPS for this domain
-SECURE_SSL_REDIRECT = True
+# SSL redirect is handled by Traefik (Ingress Controller) —
+# enabling it here would cause redirect loops
+SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
