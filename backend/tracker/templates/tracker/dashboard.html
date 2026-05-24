@@ -1,42 +1,82 @@
 {% extends "tracker/base.html" %}
-
 {% block title %}Dashboard — Job Tracker{% endblock %}
-
 {% block content %}
 
 <h1 class="text-3xl font-bold mb-8">Dashboard</h1>
 
-<!-- Summary stats — three cards showing key numbers at a glance -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-
+<!-- Summary stats — four cards showing key numbers at a glance -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
     <div class="card bg-base-100 shadow">
         <div class="card-body">
-            <h2 class="card-title text-sm text-base-content/60">Companies</h2>
+            <h2 class="text-sm text-base-content/60">Companies</h2>
             <p class="text-4xl font-bold">{{ total_companies }}</p>
         </div>
     </div>
-
     <div class="card bg-base-100 shadow">
         <div class="card-body">
-            <h2 class="card-title text-sm text-base-content/60">Total Applications</h2>
+            <h2 class="text-sm text-base-content/60">Total Applications</h2>
             <p class="text-4xl font-bold">{{ total_applications }}</p>
         </div>
     </div>
-
     <div class="card bg-base-100 shadow">
         <div class="card-body">
-            <h2 class="card-title text-sm text-base-content/60">Active Applications</h2>
+            <h2 class="text-sm text-base-content/60">Active</h2>
             <p class="text-4xl font-bold text-success">{{ active_applications }}</p>
         </div>
     </div>
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            <h2 class="text-sm text-base-content/60">Contacts</h2>
+            <p class="text-4xl font-bold">{{ total_contacts }}</p>
+        </div>
+    </div>
+</div>
 
+<!-- Pipeline breakdown — one row per status showing count and a progress bar -->
+<div class="card bg-base-100 shadow mb-10">
+    <div class="card-body">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="card-title">Application Pipeline</h2>
+            <!-- Response rate: % that moved beyond "applied" -->
+            <span class="text-sm text-base-content/60">
+                Response rate: <span class="font-bold text-success">{{ response_rate }}%</span>
+            </span>
+        </div>
+
+        <!-- One row per status — label, bar, count -->
+        <div class="flex flex-col gap-3">
+
+            {% for status_value, data in status_counts.items %}
+            <div class="flex items-center gap-4">
+                <!-- Status label — fixed width so bars align -->
+                <span class="text-sm w-32 shrink-0">{{ data.label }}</span>
+
+                <!-- Progress bar — width proportional to total applications -->
+                <!-- If total is 0 we show an empty bar to avoid errors -->
+                <div class="flex-1 bg-base-300 rounded-full h-3">
+                    <!-- percentage is calculated in the view — templates cannot do division -->
+                    <div class="h-3 rounded-full
+                        {% if status_value == 'offer' %}bg-success
+                        {% elif status_value == 'rejected' %}bg-error
+                        {% elif status_value == 'applied' %}bg-info
+                        {% else %}bg-warning{% endif %}"
+                        style="width: {{ data.percentage }}%">
+                    </div>
+                </div>
+
+                <!-- Count on the right -->
+                <span class="text-sm font-bold w-6 text-right shrink-0">{{ data.count }}</span>
+            </div>
+            {% endfor %}
+
+        </div>
+    </div>
 </div>
 
 <!-- Recent activity feed -->
 <div class="card bg-base-100 shadow">
     <div class="card-body">
         <h2 class="card-title mb-4">Recent Applications</h2>
-
         {% if recent_applications %}
         <div class="overflow-x-auto">
             <table class="table">
@@ -52,7 +92,7 @@
                     {% for app in recent_applications %}
                     <tr class="hover">
                         <td>
-                            <a href="{% url 'tracker:application_detail' app.pk %}" 
+                            <a href="{% url 'tracker:application_detail' app.pk %}"
                                class="link link-hover font-medium">
                                 {{ app.position }}
                             </a>
@@ -68,11 +108,10 @@
             </table>
         </div>
         {% else %}
-        <p class="text-base-content/60">No applications yet. 
+        <p class="text-base-content/60">No applications yet.
             <a href="{% url 'tracker:application_create' %}" class="link">Add your first one.</a>
         </p>
         {% endif %}
-
     </div>
 </div>
 

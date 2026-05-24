@@ -8,11 +8,29 @@ def dashboard(request):
     # Main dashboard — shows a summary of the entire job search at a glance
     total_companies = Company.objects.count()
     total_applications = JobApplication.objects.count()
+    total_contacts = Contact.objects.count()
 
-    # Count applications by status to show the pipeline overview
+    # Exclude terminal states to show what's still in play
     active_applications = JobApplication.objects.exclude(
         status__in=["offer", "rejected"]
     ).count()
+
+    # Count applications per status — calculate percentage here in Python
+    # because Django templates cannot do division inside style attributes
+    status_counts = {}
+    for status_value, status_label in JobApplication.STATUS_CHOICES:
+        count = JobApplication.objects.filter(status=status_value).count()
+        percentage = round((count / total_applications * 100)) if total_applications > 0 else 0
+        status_counts[status_value] = {
+            "label": status_label,
+            "count": count,
+            "percentage": percentage,
+        }
+
+    # Response rate — % of applications that moved beyond "applied"
+    # If total is 0 we avoid division by zero
+    moved_forward = JobApplication.objects.exclude(status="applied").count()
+    response_rate = round((moved_forward / total_applications * 100)) if total_applications > 0 else 0
 
     # Get the 5 most recent applications for the activity feed
     recent_applications = JobApplication.objects.select_related("company").order_by(
@@ -22,7 +40,10 @@ def dashboard(request):
     return render(request, "tracker/dashboard.html", {
         "total_companies": total_companies,
         "total_applications": total_applications,
+        "total_contacts": total_contacts,
         "active_applications": active_applications,
+        "status_counts": status_counts,
+        "response_rate": response_rate,
         "recent_applications": recent_applications,
     })
 
