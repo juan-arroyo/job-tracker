@@ -25,3 +25,7 @@ DATABASES = {
 # In development, emails are printed to the console instead of sent.
 # Useful for testing registration flows without a real email server.
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Tell Django to trust requests coming through Nginx proxy on localhost
+# Without this, Django rejects POST requests (login, logout, forms) with 403 CSRF error
+CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000']

@@ -1,8 +1,6 @@
 # Docker Compose for local development only.
 # Production runs on K3s with separate manifests in /manifests.
-
 services:
-
   db:
     # Official PostgreSQL image — same major version as production
     # to avoid behavior differences between local and K3s
@@ -30,23 +28,38 @@ services:
       sh -c "
         while ! nc -z db 5432; do sleep 1; done &&
         python manage.py migrate &&
-        python manage.py runserver 0.0.0.0:8000
+        python manage.py collectstatic --noinput &&
+        gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2
       "
     volumes:
       # Mount local code into the container so changes reflect
       # immediately without rebuilding the image
       - ./backend:/app
-    ports:
-      - "8000:8000"
+      # Named volume shared with Nginx so it can serve static files directly
+      - static_volume:/app/staticfiles
     environment:
       # Tell Django which settings file to use for local development
       DJANGO_SETTINGS_MODULE: config.settings.dev
     depends_on:
-      # Ensures the db container starts before web.
-      # Does NOT guarantee PostgreSQL is ready to accept connections —
-      # that's handled by Django's connection retry logic.
       - db
+    # No ports exposed directly — Nginx is the only entry point
+
+  nginx:
+    # Official Nginx image — lightweight alpine variant
+    image: nginx:alpine
+    ports:
+      # Only Nginx is exposed to the host — Django/Gunicorn stay internal
+      - "8000:80"
+    volumes:
+      # Mount our custom Nginx config
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      # Same named volume as web — Nginx reads static files directly
+      - static_volume:/app/staticfiles
+    depends_on:
+      - web
 
 volumes:
   # Named volume managed by Docker — persists data across container restarts
   postgres_data:
+  # Shared volume between web and nginx for static files
+  static_volume:
