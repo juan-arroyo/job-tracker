@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  # Name used to reference this Service from the Ingress
+  name: job-tracker-svc
+spec:
+  type: NodePort
+  selector:
+    # Connects to Pods with this label — must match deployment.yaml
+    app: job-tracker
+  ports:
+    - port: 80
+      targetPort: 8000
+      # External port — any request to this port reaches Django
+      nodePort: 30090

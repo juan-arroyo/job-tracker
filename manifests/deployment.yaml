@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # Name used to reference this Deployment
+  name: job-tracker
+spec:
+  # Two replicas for high availability — possible because PostgreSQL is external
+  replicas: 2
+  selector:
+    matchLabels:
+      app: job-tracker
+  template:
+    metadata:
+      labels:
+        app: job-tracker
+    spec:
+      containers:
+        - name: job-tracker
+          image: juanmnarroyo/job-tracker:v3
+          ports:
+            - containerPort: 8000
+          env:
+            # Tell Django which settings module to use
+            - name: DJANGO_SETTINGS_MODULE
+              value: "config.settings.k3s"
+            # Read credentials from the Secret — never hardcoded
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: job-tracker-secret
+                  key: SECRET_KEY
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: job-tracker-secret
+                  key: DB_NAME
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: job-tracker-secret
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: job-tracker-secret
+                  key: DB_PASSWORD
+            # PostgreSQL is accessed by Service name, not IP — stable across Pod restarts
+            - name: DB_HOST
+              value: "postgres-svc"
+            - name: DB_PORT
+              value: "5432"
+          command: ["sh", "-c"]
+          args:
+            - |
+              # Run migrations and start Gunicorn
+              python manage.py migrate &&
+              python manage.py collectstatic --noinput &&
+              gunicorn config.wsgi:application --bind 0.0.0.0:8000

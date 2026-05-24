@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  # Name used by Django to connect to PostgreSQL — must match DB_HOST in settings
+  name: postgres-svc
+spec:
+  type: ClusterIP
+  selector:
+    # Connects to Pods with this label — must match postgres-deployment.yaml
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432  

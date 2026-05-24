@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: job-tracker-ingress
+  annotations:
+    # Use the ClusterIssuer we defined to request SSL certificate
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  # Traefik is the default Ingress Controller in K3s
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - demo.jmarroyo.es
+      # cert-manager stores the SSL certificate in this Secret
+      secretName: job-tracker-tls
+  rules:
+    - host: demo.jmarroyo.es
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                # Must match the name in service.yaml
+                name: job-tracker-svc
+                port:
+                  number: 80
