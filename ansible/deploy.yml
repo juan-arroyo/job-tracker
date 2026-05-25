@@ -1,0 +1,35 @@
+# deploy.yml
+# This playbook applies all K3s manifests in the correct order.
+# It runs on k3s-server (localhost) triggered by GitHub Actions.
+# Same pattern as clinic-k3s-pipeline — proven and tested.
+
+- name: Deploy job-tracker to K3s
+  hosts: k3s_server
+  vars_files:
+    - vars/manifest_path.yml
+
+  tasks:
+
+    - name: Apply secret (credentials for Django and PostgreSQL)
+      command: kubectl apply -f {{ manifest_path }}/secret.yaml
+
+    - name: Apply PostgreSQL deployment
+      command: kubectl apply -f {{ manifest_path }}/postgres-deployment.yaml
+
+    - name: Apply PostgreSQL service (ClusterIP — internal only)
+      command: kubectl apply -f {{ manifest_path }}/postgres-service.yaml
+
+    - name: Wait for PostgreSQL to be ready before starting Django
+      command: kubectl rollout status deployment/postgres --timeout=60s
+
+    - name: Apply Django deployment (2 replicas)
+      command: kubectl apply -f {{ manifest_path }}/deployment.yaml
+
+    - name: Apply Django service (NodePort)
+      command: kubectl apply -f {{ manifest_path }}/service.yaml
+
+    - name: Apply ClusterIssuer (Let's Encrypt config)
+      command: kubectl apply -f {{ manifest_path }}/clusterissuer.yaml
+
+    - name: Apply Ingress (demo.jmarroyo.es + SSL)
+      command: kubectl apply -f {{ manifest_path }}/ingress.yaml

@@ -1,0 +1,4 @@
+# Path to the manifests folder on k3s-server
+# This is where secret.yaml and all other manifests live on the server
+# It must match the actual path on El Cerebro, not on your local machine
+manifest_path: /home/github-runner/job-tracker/manifests

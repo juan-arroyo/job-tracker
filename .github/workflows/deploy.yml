@@ -1,0 +1,30 @@
+# deploy.yml
+# This workflow triggers on every push to main.
+# It runs the Ansible deploy playbook on the self-hosted runner in k3s-server.
+# Same pattern as clinic-k3s-pipeline — proven and tested.
+
+name: Deploy to K3s
+
+on:
+  push:
+    branches:
+      - main  # only trigger on pushes to main, not other branches
+
+jobs:
+  deploy:
+    runs-on: self-hosted  # use our runner installed on k3s-server, not GitHub's
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4  # downloads the latest code from GitHub to the runner
+
+      - name: Copy secret.yaml into manifests folder
+        # secret.yaml is not in GitHub (it's in .gitignore)
+        # it lives permanently on the server — we copy it into the workspace
+        run: |
+          cp /home/github-runner/job-tracker/manifests/secret.yaml $GITHUB_WORKSPACE/manifests/secret.yaml
+
+      - name: Run Ansible deploy playbook
+        # this executes all 8 kubectl apply steps in order
+        run: |
+          ansible-playbook -i $GITHUB_WORKSPACE/ansible/inventory.ini $GITHUB_WORKSPACE/ansible/deploy.yml
