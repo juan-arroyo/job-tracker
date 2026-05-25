@@ -1,0 +1,68 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-backup
+spec:
+  # Run every hour at minute 0
+  schedule: "0 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: backup
+              # Use the same PostgreSQL version as in production
+              image: postgres:16-alpine
+              env:
+                # Database credentials from the existing secret
+                - name: DB_NAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: job-tracker-secret
+                      key: DB_NAME
+                - name: DB_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: job-tracker-secret
+                      key: DB_USER
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: job-tracker-secret
+                      key: DB_PASSWORD
+              volumeMounts:
+                # Mount the SSH private key to connect to the Storage Box
+                - name: ssh-key
+                  mountPath: /root/.ssh
+                  readOnly: true
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  # Install openssh-client for sftp
+                  apk add --no-cache openssh-client
+
+                  # Generate backup filename with timestamp
+                  BACKUP_FILE="/tmp/backup-$(date +%Y%m%d-%H%M%S).sql"
+
+                  # Dump the database to a file
+                  pg_dump -h postgres-svc -U $DB_USER $DB_NAME > $BACKUP_FILE
+
+                  # Copy key to /tmp where we can set correct permissions
+                  cp /root/.ssh/ssh-privatekey /tmp/storagebox_key
+                  chmod 600 /tmp/storagebox_key
+
+                  # Upload the backup file to the Storage Box via SFTP
+                  sftp -P 23 -i /tmp/storagebox_key \
+                    -o StrictHostKeyChecking=no \
+                    u600095@u600095.your-storagebox.de <<EOF
+                  put $BACKUP_FILE backup-latest.sql
+                  EOF
+
+                  echo "Backup completed: $BACKUP_FILE"
+          volumes:
+            # Load the SSH private key from the Kubernetes Secret
+            - name: ssh-key
+              secret:
+                secretName: storagebox-ssh-key
+          restartPolicy: OnFailure

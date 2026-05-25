@@ -1,0 +1,309 @@
+---
+# provision.yml — Full provisioning playbook for job-tracker
+# Builds the entire K3s infrastructure from 3 empty VPS
+# Run ONCE from your local PC when servers are new or after a Disaster Recovery
+# Usage: ansible-playbook -i ansible/inventory-provision.ini ansible/provision.yml --ask-vault-pass
+
+# ==============================================================
+# PLAY 1 — Common tasks for ALL servers
+# ==============================================================
+- name: Base configuration for all servers
+  hosts: all
+  become: true
+
+  vars_files:
+    - vars/provision_vars.yml
+    - vars/provision_secrets.yml
+
+  tasks:
+
+    - name: Update apt package list
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+
+# ==============================================================
+# PLAY 2 — Only k3s_server
+# Installs K3s, kubectl, Ansible, GitHub runner and cert-manager
+# ==============================================================
+- name: Configure k3s_server
+  hosts: k3s_server
+  become: true
+
+  vars_files:
+    - vars/provision_vars.yml
+    - vars/provision_secrets.yml
+
+  tasks:
+
+    - name: Install K3s in server mode (control-plane)
+      shell: |
+        curl -sfL https://get.k3s.io | sh -s - server --write-kubeconfig-mode 644
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Download kubectl
+      get_url:
+        url: "https://dl.k8s.io/release/v1.32.0/bin/linux/amd64/kubectl"
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+
+    - name: Install Ansible via apt
+      apt:
+        name: ansible
+        state: present
+
+    - name: Create github-runner user
+      user:
+        name: "{{ runner_user }}"
+        shell: /bin/bash
+        create_home: yes
+        state: present
+
+    - name: Create .kube directory for github-runner
+      file:
+        path: "/home/{{ runner_user }}/.kube"
+        state: directory
+        owner: "{{ runner_user }}"
+        mode: '0755'
+
+    - name: Copy kubeconfig to github-runner user
+      copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "/home/{{ runner_user }}/.kube/config"
+        remote_src: yes
+        owner: "{{ runner_user }}"
+        mode: '0600'
+
+    - name: Point kubeconfig to server public IP
+      replace:
+        path: "/home/{{ runner_user }}/.kube/config"
+        regexp: '127.0.0.1'
+        replace: "{{ k3s_server_ip }}"
+
+    - name: Install cert-manager in the cluster
+      shell: |
+        kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.17.2/cert-manager.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      args:
+        creates: /var/lib/rancher/k3s/server/manifests/cert-manager.yaml
+
+    - name: Wait for cert-manager to be ready
+      shell: |
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager -n cert-manager --timeout=120s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    # --- GitHub Actions runner — second runner, clinic-k3s-pipeline runner is untouched ---
+    - name: Create runner directory for job-tracker
+      file:
+        path: "{{ runner_dir }}"
+        state: directory
+        owner: "{{ runner_user }}"
+        mode: '0755'
+
+    - name: Download GitHub Actions runner
+      get_url:
+        url: "https://github.com/actions/runner/releases/download/v{{ runner_version }}/actions-runner-linux-x64-{{ runner_version }}.tar.gz"
+        dest: "{{ runner_dir }}/actions-runner.tar.gz"
+        owner: "{{ runner_user }}"
+
+    - name: Extract runner
+      unarchive:
+        src: "{{ runner_dir }}/actions-runner.tar.gz"
+        dest: "{{ runner_dir }}"
+        remote_src: yes
+        owner: "{{ runner_user }}"
+        creates: "{{ runner_dir }}/config.sh"
+
+    - name: Remove project directory if it already exists
+      file:
+        path: "{{ project_dir }}"
+        state: absent
+
+    - name: Clone project repo on the server
+      git:
+        repo: "https://{{ github_pat }}@github.com/{{ github_repo }}.git"
+        dest: "{{ project_dir }}"
+        version: main
+        force: yes
+      become_user: "{{ runner_user }}"
+
+    - name: Copy secret.yaml to the server
+      copy:
+        src: "{{ playbook_dir }}/../manifests/secret.yaml"
+        dest: "{{ project_dir }}/manifests/secret.yaml"
+        owner: "{{ runner_user }}"
+        mode: '0600'
+
+    # --- Install SSH key for Storage Box access ---
+    - name: Create .ssh directory for github-runner
+      file:
+        path: "/home/{{ runner_user }}/.ssh"
+        state: directory
+        owner: "{{ runner_user }}"
+        mode: '0700'
+
+    - name: Copy Storage Box SSH private key to server
+      copy:
+        src: "{{ playbook_dir }}/vars/storagebox_key"
+        dest: "/home/{{ runner_user }}/.ssh/storagebox_backup"
+        owner: "{{ runner_user }}"
+        mode: '0600'
+
+    - name: Register Storage Box host in known_hosts to avoid interactive prompt
+      shell: |
+        ssh-keyscan -p {{ storagebox_port }} {{ storagebox_host }} >> /home/{{ runner_user }}/.ssh/known_hosts
+      become_user: "{{ runner_user }}"
+
+    - name: Obtain runner registration token via GitHub API
+      uri:
+        url: "https://api.github.com/repos/{{ github_repo }}/actions/runners/registration-token"
+        method: POST
+        headers:
+          Authorization: "token {{ github_pat }}"
+          Accept: "application/vnd.github.v3+json"
+        status_code: 201
+      register: runner_token_response
+
+    - name: Stop runner service if exists
+      shell: ./svc.sh stop
+      args:
+        chdir: "{{ runner_dir }}"
+      ignore_errors: yes
+
+    - name: Uninstall runner service if exists
+      shell: ./svc.sh uninstall
+      args:
+        chdir: "{{ runner_dir }}"
+      ignore_errors: yes
+
+    - name: Remove runner if already registered
+      shell: |
+        REMOVE_TOKEN=$(curl -s -X POST \
+          -H "Authorization: token {{ github_pat }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/{{ github_repo }}/actions/runners/remove-token \
+          | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
+        ./config.sh remove --token $REMOVE_TOKEN
+      args:
+        chdir: "{{ runner_dir }}"
+      become_user: "{{ runner_user }}"
+      ignore_errors: yes
+
+    - name: Register runner against the repo
+      shell: |
+        ./config.sh \
+          --url https://github.com/{{ github_repo }} \
+          --token {{ runner_token_response.json.token | default('dry-run-token') }} \
+          --name k3s-server-job-tracker \
+          --work exit \
+          --unattended \
+          --replace
+      args:
+        chdir: "{{ runner_dir }}"
+      become_user: "{{ runner_user }}"
+
+    - name: Install runner as systemd service
+      shell: ./svc.sh install {{ runner_user }}
+      args:
+        chdir: "{{ runner_dir }}"
+
+    - name: Start runner service
+      shell: ./svc.sh start
+      args:
+        chdir: "{{ runner_dir }}"
+
+
+# ==============================================================
+# PLAY 3 — Only k3s_agents
+# Joins them to the cluster as workers
+# ==============================================================
+- name: Configure k3s_agents
+  hosts: k3s_agents
+  become: true
+
+  vars_files:
+    - vars/provision_vars.yml
+    - vars/provision_secrets.yml
+
+  tasks:
+
+    - name: Get cluster token from k3s_server
+      shell: cat /var/lib/rancher/k3s/server/node-token
+      delegate_to: "{{ k3s_server_ip }}"
+      register: k3s_token
+
+    - name: Install K3s in agent mode and join the cluster
+      shell: |
+        curl -sfL https://get.k3s.io | \
+          K3S_URL=https://{{ k3s_server_ip }}:6443 \
+          K3S_TOKEN={{ k3s_token.stdout }} \
+          sh -
+      args:
+        creates: /usr/local/bin/k3s
+
+
+# ==============================================================
+# PLAY 4 — Restore database backup — only on k3s_server
+# Downloads the latest backup from Storage Box and restores it
+# This is what makes the Disaster Recovery demo compelling
+# ==============================================================
+- name: Restore database from Storage Box backup
+  hosts: k3s_server
+  become: true
+
+  vars_files:
+    - vars/provision_vars.yml
+    - vars/provision_secrets.yml
+
+  tasks:
+
+    - name: Apply all K3s manifests to deploy The Survivor
+      shell: |
+        kubectl apply -f {{ project_dir }}/manifests/secret.yaml
+        kubectl apply -f {{ project_dir }}/manifests/postgres-deployment.yaml
+        kubectl apply -f {{ project_dir }}/manifests/postgres-service.yaml
+      environment:
+        KUBECONFIG: "/home/{{ runner_user }}/.kube/config"
+
+    - name: Wait for PostgreSQL to be ready before restoring
+      shell: |
+        kubectl rollout status deployment/postgres --timeout=120s
+      environment:
+        KUBECONFIG: "/home/{{ runner_user }}/.kube/config"
+
+    - name: Download latest backup from Storage Box
+      shell: |
+        sftp -P {{ storagebox_port }} \
+          -i /home/{{ runner_user }}/.ssh/storagebox_backup \
+          -o StrictHostKeyChecking=no \
+          {{ storagebox_user }}@{{ storagebox_host }} <<EOF
+        get {{ storagebox_backup_file }} /tmp/restore.sql
+        EOF
+      become_user: "{{ runner_user }}"
+
+    - name: Restore database from backup
+      shell: |
+        # Get DB credentials directly from the Kubernetes Secret
+        DB_USER=$(kubectl get secret job-tracker-secret -o jsonpath='{.data.DB_USER}' | base64 -d)
+        DB_NAME=$(kubectl get secret job-tracker-secret -o jsonpath='{.data.DB_NAME}' | base64 -d)
+        # Get the PostgreSQL pod name dynamically
+        POD=$(kubectl get pod -l app=postgres -o jsonpath='{.items[0].metadata.name}')
+        # Copy the backup file into the pod
+        kubectl cp /tmp/restore.sql $POD:/tmp/restore.sql
+        # Restore the database — credentials read from K8s Secret, not hardcoded
+        kubectl exec $POD -- psql -U $DB_USER -d $DB_NAME -f /tmp/restore.sql
+      environment:
+        KUBECONFIG: "/home/{{ runner_user }}/.kube/config"
+
+    - name: Deploy the rest of the manifests
+      shell: |
+        kubectl apply -f {{ project_dir }}/manifests/deployment.yaml
+        kubectl apply -f {{ project_dir }}/manifests/service.yaml
+        kubectl apply -f {{ project_dir }}/manifests/clusterissuer.yaml
+        kubectl apply -f {{ project_dir }}/manifests/ingress.yaml
+      environment:
+        KUBECONFIG: "/home/{{ runner_user }}/.kube/config"

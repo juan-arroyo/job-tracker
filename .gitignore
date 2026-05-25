@@ -5,6 +5,9 @@
 # Kubernetes secrets — contain production credentials in Base64
 manifests/secret.yaml
 
+# Ansible Vault — encrypted but still sensitive, never commit
+ansible/vars/provision_secrets.yml
+
 # Python
 __pycache__/
 *.pyc

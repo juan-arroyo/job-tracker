@@ -1,0 +1,28 @@
+# Non-sensitive provisioning variables — safe to commit to GitHub
+# Sensitive values (PAT, passwords) live in provision_secrets.yml encrypted with Ansible Vault
+
+# Hetzner VPS public IPs — used to SSH into servers and configure kubeconfig
+k3s_server_ip: "46.62.219.138"
+k3s_agent1_ip: "77.42.124.22"
+k3s_agent2_ip: "77.42.124.11"
+
+# Dedicated user for the GitHub Actions runner — avoids running CI/CD as root
+runner_user: "github-runner"
+
+# Second runner directory — clinic-k3s-pipeline runner lives in actions-runner, never touch it
+runner_dir: "/home/github-runner/actions-runner-job-tracker"
+
+# Project directory on the server — separate from clinic-manager to avoid conflicts
+project_dir: "/home/github-runner/job-tracker"
+
+# GitHub repo where the runner registers and the pipeline is triggered
+github_repo: "juan-arroyo/job-tracker"
+
+# Runner version — must match the version already working in clinic-k3s-pipeline
+runner_version: "2.334.0"
+
+# Storage Box connection details — backup destination that survives cluster destruction
+storagebox_host: "u600095.your-storagebox.de"
+storagebox_user: "u600095"
+storagebox_port: "23"
+storagebox_backup_file: "backup-latest.sql"
