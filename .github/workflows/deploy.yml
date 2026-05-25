@@ -25,6 +25,7 @@ jobs:
           cp /home/github-runner/job-tracker/manifests/secret.yaml $GITHUB_WORKSPACE/manifests/secret.yaml
 
       - name: Run Ansible deploy playbook
-        # this executes all 8 kubectl apply steps in order
+        # Pass $GITHUB_WORKSPACE as manifest_path so Ansible uses the freshly
+        # checked out manifests instead of a static path on the server
         run: |
-          ansible-playbook -i $GITHUB_WORKSPACE/ansible/inventory.ini $GITHUB_WORKSPACE/ansible/deploy.yml
+          ansible-playbook -i $GITHUB_WORKSPACE/ansible/inventory.ini $GITHUB_WORKSPACE/ansible/deploy.yml -e "manifest_path=$GITHUB_WORKSPACE/manifests"
