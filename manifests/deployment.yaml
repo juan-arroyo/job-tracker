@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: job-tracker
-          image: juanmnarroyo/job-tracker:v3
+          image: juanmnarroyo/job-tracker:v4
           ports:
             - containerPort: 8000
           env:
