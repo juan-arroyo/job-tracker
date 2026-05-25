@@ -148,7 +148,7 @@
 
     - name: Copy Storage Box SSH private key to server
       copy:
-        src: "{{ playbook_dir }}/vars/storagebox_key"
+        src: "~/.job-tracker-secrets/storagebox_key"
         dest: "/home/{{ runner_user }}/.ssh/storagebox_backup"
         owner: "{{ runner_user }}"
         mode: '0600'
@@ -260,6 +260,24 @@
     - vars/provision_secrets.yml
 
   tasks:
+
+    - name: Create Storage Box credentials secret in Kubernetes
+      shell: |
+        kubectl create secret generic storagebox-config \
+          --from-literal=STORAGEBOX_HOST="{{ storagebox_host }}" \
+          --from-literal=STORAGEBOX_USER="{{ storagebox_user }}" \
+          --from-literal=STORAGEBOX_PORT="{{ storagebox_port }}" \
+          --dry-run=client -o yaml | kubectl apply -f -
+      environment:
+        KUBECONFIG: "/home/{{ runner_user }}/.kube/config"
+    
+    - name: Create Storage Box SSH key secret in Kubernetes
+      shell: |
+        kubectl create secret generic storagebox-ssh-key \
+          --from-file=ssh-privatekey=/home/{{ runner_user }}/.ssh/storagebox_backup \
+          --dry-run=client -o yaml | kubectl apply -f -
+      environment:
+        KUBECONFIG: "/home/{{ runner_user }}/.kube/config"
 
     - name: Apply all K3s manifests to deploy The Survivor
       shell: |
