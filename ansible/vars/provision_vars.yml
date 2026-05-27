@@ -26,3 +26,7 @@ storagebox_host: "<STORAGEBOX_HOST>"
 storagebox_user: "<STORAGEBOX_USER>"
 storagebox_port: "<STORAGEBOX_PORT>"
 storagebox_backup_file: "backup-latest.sql"
+
+# Local path to the Storage Box SSH key — real value in provision_secrets.yml
+# differs per machine (Pi vs PC vs laptop)
+storagebox_key_local_path: "<STORAGEBOX_KEY_LOCAL_PATH>"
