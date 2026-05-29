@@ -1,8 +1,14 @@
 # Job Tracker — The Survivor
 
 A Django application for tracking job applications across the full hiring pipeline.
-Built as part of a live infrastructure demo: the app runs on a K3s cluster and can be
-destroyed and rebuilt from scratch in under 15 minutes with a single command.
+Built as part of a live infrastructure demo: the app runs on a 3-node K3s cluster on
+Hetzner Cloud, with automated backups to a remote storage box and full disaster recovery
+— the entire cluster can be destroyed and rebuilt from scratch in under 15 minutes.
+
+🔗 **Live demo:** [https://demo.jmarroyo.es](https://demo.jmarroyo.es) *(available during infrastructure demo)*  
+🎛️ **Control panel:** [infrastructure-demo-control](https://github.com/juan-arroyo/infrastructure-demo-control)
+
+![Dashboard](docs/screenshot-dashboard.png)
 
 ---
 
@@ -17,7 +23,8 @@ destroyed and rebuilt from scratch in under 15 minutes with a single command.
 | Container runtime | Docker + Docker Compose (local) |
 | Orchestration | K3s / Kubernetes (production) |
 | CI/CD | GitHub Actions + Ansible |
-| Registry | Docker Hub — `juanmnarroyo/job-tracker:v1` |
+| Backups | Hetzner Storage Box — automated daily cronjob |
+| Registry | Docker Hub — `juanmnarroyo/job-tracker:v5` |
 
 ---
 
@@ -39,9 +46,41 @@ Browser → Nginx :8000 → Gunicorn (Django) → PostgreSQL
 
 Production (K3s on Hetzner):
 Internet → Traefik (Ingress) → Service → Django Pod x2 replicas → PostgreSQL Pod
-                ↑
-         cert-manager (SSL — Let's Encrypt)
+                ↑                                                        ↓
+         cert-manager (SSL)                              Backup CronJob → Hetzner Storage Box
 ```
+
+**Cluster layout:**
+
+| Node | Role |
+|---|---|
+| k3s-server | Control plane + GitHub Actions self-hosted runner |
+| k3s-agent-1 | Django replica 1 + PostgreSQL |
+| k3s-agent-2 | Django replica 2 |
+
+---
+
+## Disaster Recovery
+
+The cluster can be fully destroyed and rebuilt without data loss:
+
+1. A Kubernetes CronJob runs daily `pg_dump` backups to a Hetzner Storage Box over SSH
+2. The control panel ([infrastructure-demo-control](https://github.com/juan-arroyo/infrastructure-demo-control)) triggers cluster destruction and reprovisioning via Ansible
+3. On rebuild, the provisioning playbook restores the latest backup before starting the app
+4. The app is back online at `demo.jmarroyo.es` with all data intact — in under 15 minutes
+
+---
+
+## CI/CD Pipeline
+
+Every `git push` to `main` triggers a GitHub Actions workflow:
+
+1. The workflow connects to the self-hosted runner on `k3s-server`
+2. An Ansible playbook applies the latest K3s manifests
+3. Kubernetes performs a rolling update — zero downtime
+
+> **Note:** Automated Docker image builds are planned as a next step.
+> The current image is built manually and pushed to Docker Hub as `juanmnarroyo/job-tracker:v5`.
 
 ---
 
@@ -80,34 +119,27 @@ job-tracker/
 │   └── tracker/              # main app — models, views, templates
 │       ├── fixtures/         # sample data with real Dutch/German companies
 │       └── templates/
+├── manifests/                # Kubernetes manifests
+│   ├── deployment.yaml       # Django — 2 replicas
+│   ├── postgres-deployment.yaml
+│   ├── ingress.yaml          # Traefik + SSL via cert-manager
+│   └── backup-cronjob.yaml   # daily pg_dump to Hetzner Storage Box
+├── ansible/                  # automation playbooks
+│   ├── deploy.yml            # applies K3s manifests (triggered by GitHub Actions)
+│   └── provision.yml         # full cluster provisioning from scratch
 ├── nginx/
 │   └── nginx.conf            # reverse proxy config for local dev
-├── manifests/                # Kubernetes manifests (Fase 2)
-├── ansible/                  # deployment playbooks (Fase 2)
 └── docker-compose.yml
 ```
 
 ---
 
-## Production Deployment
+## Part of a Larger Demo
 
-The app is deployed on a 3-node K3s cluster on Hetzner Cloud:
+This repo is **The Survivor** — the app that gets destroyed and comes back.
 
-- **k3s-server** — control plane + GitHub Actions self-hosted runner
-- **k3s-agent-1** — Django replica 1 + PostgreSQL
-- **k3s-agent-2** — Django replica 2
+The companion project [infrastructure-demo-control](https://github.com/juan-arroyo/infrastructure-demo-control)
+is the control panel that orchestrates the entire lifecycle: provisioning, destroying, and
+rebuilding the cluster via a web interface with real-time log streaming over WebSockets.
 
-Deployment is fully automated: `git push` to `main` triggers a GitHub Actions workflow
-that runs an Ansible playbook applying the K3s manifests. No manual steps.
-
-Docker image: `juanmnarroyo/job-tracker:v1`  
-Live URL: `https://demo.jmarroyo.es` *(available during infrastructure demo)*
-
----
-
-## Part of a Larger Project
-
-This app is **The Survivor** — one component of a larger infrastructure demo.
-A separate control panel ([infrastructure-demo-control](https://github.com/juan-arroyo/infrastructure-demo-control))
-allows destroying and rebuilding the entire K3s cluster from scratch via a web interface,
-demonstrating Ansible provisioning, Kubernetes orchestration, and automated disaster recovery.
+Together they demonstrate: Ansible · Kubernetes · CI/CD · Backup & Recovery · Django · Docker
