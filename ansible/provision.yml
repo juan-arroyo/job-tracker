@@ -323,5 +323,6 @@
         kubectl apply -f {{ project_dir }}/manifests/service.yaml
         kubectl apply -f {{ project_dir }}/manifests/clusterissuer.yaml
         kubectl apply -f {{ project_dir }}/manifests/ingress.yaml
+        kubectl apply -f {{ project_dir }}/manifests/backup-cronjob.yaml
       environment:
         KUBECONFIG: "/home/{{ runner_user }}/.kube/config"
